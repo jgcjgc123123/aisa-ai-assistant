@@ -1,16 +1,12 @@
 import streamlit as st
 import google.generativeai as genai
 
-# Page Config
-st.set_page_config(page_title="Aisa - AI Studies Assistant", page_icon="🎓")import streamlit as st
-import google.generativeai as genai
-
-st.set_page_config(page_title="Aisa - AI Studies Assistant", page_icon="🎓")
+st.set_page_config(page_title="Aisa - AI Studies Assistant", page_icon="😼")
 
 if "GEMINI_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 else:
-    st.error("Please add your Gemini API Key to Streamlit Secrets!")
+    st.error("Aisa is offline 😴")
     st.stop()
 
 SYSTEM_PROMPT = """
@@ -25,7 +21,7 @@ Key guidelines:
 4. Always prioritize clarity in technical explanations.
 """
 
-st.title("🎓 Aisa AI")
+st.title("😼 Aisa AI")
 st.caption("Your Applied AI Studies Assistant")
 
 if "messages" not in st.session_state:
