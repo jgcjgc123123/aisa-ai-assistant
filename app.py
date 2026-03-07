@@ -37,7 +37,7 @@ if prompt := st.chat_input("How can I help with your studies today?"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-3-flash')
         response = model.generate_content(f"{SYSTEM_PROMPT}\n\nUser: {prompt}")
         st.markdown(response.text)
         
