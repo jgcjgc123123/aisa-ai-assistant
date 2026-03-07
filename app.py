@@ -20,7 +20,7 @@ human-like, and expert in Applied AI and Networking.
 """
 
 st.title("🎓 Aisa AI")
-st.caption("Your Applied Intelligence Studies Assistant")
+st.caption("Your Applied AI Studies Assistant")
 
 # 3. Initialize Chat History
 if "messages" not in st.session_state:
