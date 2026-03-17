@@ -4,6 +4,19 @@ import google.generativeai as genai
 # 1. Page Configuration
 st.set_page_config(page_title="Aisa - AI Studies Assistant", page_icon="😼", layout="wide")
 
+# Move SYSTEM_PROMPT here so sidebar buttons can use it
+SYSTEM_PROMPT = """
+You are Aisa (Applied Intelligence Studies Assistant), a dedicated AI companion for students at Cebu Institute of Technology - University.
+Your tone is human-like, supportive, and slightly casual—like a smart upperclassman. 
+You are an expert in app development, coding, and general IT courses and subjects. 
+
+Key guidelines:
+1. Be concise but insightful.
+2. Use relatable student language, but stay professional enough.
+3. If asked about CIT-U specifically, show school spirit (Technologian pride!).
+4. Always prioritize clarity in technical explanations.
+"""
+
 # 2. Sidebar Layout
 with st.sidebar:
     st.subheader("😼 Aisa does not handle [enrollment](https://cit.edu/enrollment/) or [payments](https://cit.edu/payment-options/)!")
@@ -24,8 +37,17 @@ with st.sidebar:
             st.session_state.messages.append({"role": "user", "content": user_msg})
             
             with st.spinner("Starting quiz..."):
-                model = genai.GenerativeModel('gemini-2.5-flash')
-                response = model.generate_content(f"You are a helpful tutor.\n\nUser: {user_msg}")
+                model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=SYSTEM_PROMPT)
+                
+                # Build history for the quiz button
+                formatted_history = []
+                for msg in st.session_state.messages[:-1]:
+                    role = "model" if msg["role"] == "assistant" else "user"
+                    formatted_history.append({"role": role, "parts": [msg["content"]]})
+                
+                formatted_history.append({"role": "user", "parts": [user_msg]})
+                
+                response = model.generate_content(formatted_history)
                 st.session_state.messages.append({"role": "assistant", "content": response.text})
             st.rerun()
         else:
@@ -37,7 +59,7 @@ with st.sidebar:
             st.session_state.messages.append({"role": "user", "content": user_msg})
             
             with st.spinner("Generating flashcards..."):
-                model = genai.GenerativeModel('gemini-2.5-flash')
+                model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=SYSTEM_PROMPT)
                 
                 flashcard_prompt = f"""
                 You are a helpful tutor. Provide 5 study flashcards about {study_topic}. 
@@ -92,18 +114,6 @@ if "GEMINI_API_KEY" in st.secrets:
 else:
     st.error("Aisa is offline 😴")
     st.stop()
-
-SYSTEM_PROMPT = """
-You are Aisa (Applied Intelligence Studies Assistant), a dedicated AI companion for students at Cebu Institute of Technology - University.
-Your tone is human-like, supportive, and slightly casual—like a smart upperclassman. 
-You are an expert in app development, coding, and general IT courses and subjects. 
-
-Key guidelines:
-1. Be concise but insightful.
-2. Use relatable student language, but stay professional enough.
-3. If asked about CIT-U specifically, show school spirit (Technologian pride!).
-4. Always prioritize clarity in technical explanations.
-"""
 
 # 4. Top Header & Stats Layout
 st.title("😼 Aisa AI")
@@ -160,21 +170,28 @@ if prompt := st.chat_input("How can I help with your studies today?", accept_fil
     )
     
     with st.spinner("Aisa is thinking..."):
-        model = genai.GenerativeModel('gemini-2.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=SYSTEM_PROMPT)
         
-        parts = [SYSTEM_PROMPT]
+        # Build history for the main chat
+        formatted_history = []
+        for msg in st.session_state.messages[:-1]:
+            role = "model" if msg["role"] == "assistant" else "user"
+            formatted_history.append({"role": role, "parts": [msg["content"]]})
+            
+        current_parts = []
         if user_text:
-            parts.append(user_text)
+            current_parts.append(user_text)
             
         if user_files:
             for f in user_files:
-                parts.append({
+                current_parts.append({
                     "mime_type": f.type,
                     "data": f.getvalue()
                 })
                 
-        contents = [{"role": "user", "parts": parts}]
-        response = model.generate_content(contents)
+        formatted_history.append({"role": "user", "parts": current_parts})
+        
+        response = model.generate_content(formatted_history)
         
         st.session_state.messages.append({"role": "assistant", "content": response.text})
     
