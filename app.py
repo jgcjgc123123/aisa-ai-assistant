@@ -14,10 +14,7 @@ with st.sidebar:
     st.subheader("🎯 Study Modes")
     study_topic = st.text_input("What topic are we focusing on?", placeholder="e.g., OSI Model, Subnetting")
     
-    col1, col2 = st.columns(2)
-    with col1:
         quiz_btn = st.button("Generate Quiz", use_container_width=True)
-    with col2:
         flashcard_btn = st.button("Generate Flashcards", use_container_width=True)
     
     if quiz_btn:
