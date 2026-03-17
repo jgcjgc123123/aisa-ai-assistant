@@ -123,23 +123,36 @@ else:
     st.error("Aisa is offline 😴")
     st.stop()
 
-# 4. Top Header & Stats Layout
-st.title("😼 Aisa AI")
-st.caption("Your Applied AI Studies Assistant")
+# 4. Top Header & Stats Layout (Beautified)
+st.markdown(
+    """
+    <div style='text-align: center; margin-bottom: 20px;'>
+        <h1 style='color: #F2A900; margin-bottom: 0px;'>😼 Aisa AI</h1>
+        <p style='color: #888; font-size: 18px;'>Your Applied AI Studies Assistant</p>
+    </div>
+    <hr>
+    """, 
+    unsafe_allow_html=True
+)
 
 # 5. Chat Logic
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display history with custom HTML
+# Welcome message if chat is empty
+if len(st.session_state.messages) == 0:
+    st.info("👋 Hello! I am Aisa. Send a message, upload a file, or generate a quiz to begin studying.")
+
+# Display history with custom HTML and Avatars
 for message in st.session_state.messages:
     if message["role"] == "user":
         st.markdown(
             f"""
-            <div style='display: flex; justify-content: flex-end;'>
-                <div style='background-color: #0078D7; color: white; padding: 10px 15px; border-radius: 15px 15px 0px 15px; margin-bottom: 10px; max-width: 75%;'>
+            <div style='display: flex; justify-content: flex-end; align-items: flex-end; margin-bottom: 10px;'>
+                <div style='background-color: #0078D7; color: white; padding: 10px 15px; border-radius: 15px 15px 0px 15px; max-width: 75%;'>
                     {message["content"]}
                 </div>
+                <div style='font-size: 24px; margin-left: 10px;'>🧑‍💻</div>
             </div>
             """,
             unsafe_allow_html=True
@@ -147,8 +160,9 @@ for message in st.session_state.messages:
     else:
         st.markdown(
             f"""
-            <div style='display: flex; justify-content: flex-start;'>
-                <div style='background-color: #2D2D2D; color: white; padding: 10px 15px; border-radius: 15px 15px 15px 0px; margin-bottom: 10px; max-width: 75%;'>
+            <div style='display: flex; justify-content: flex-start; align-items: flex-end; margin-bottom: 10px;'>
+                <div style='font-size: 24px; margin-right: 10px;'>😼</div>
+                <div style='background-color: #2D2D2D; color: white; padding: 10px 15px; border-radius: 15px 15px 15px 0px; max-width: 75%;'>
                     {message["content"]}
                 </div>
             </div>
@@ -168,10 +182,11 @@ if prompt := st.chat_input("How can I help with your studies today?", accept_fil
     
     st.markdown(
         f"""
-        <div style='display: flex; justify-content: flex-end;'>
-            <div style='background-color: #0078D7; color: white; padding: 10px 15px; border-radius: 15px 15px 0px 15px; margin-bottom: 10px; max-width: 75%;'>
+        <div style='display: flex; justify-content: flex-end; align-items: flex-end; margin-bottom: 10px;'>
+            <div style='background-color: #0078D7; color: white; padding: 10px 15px; border-radius: 15px 15px 0px 15px; max-width: 75%;'>
                 {display_text}
             </div>
+            <div style='font-size: 24px; margin-left: 10px;'>🧑‍💻</div>
         </div>
         """,
         unsafe_allow_html=True
