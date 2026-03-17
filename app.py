@@ -99,7 +99,7 @@ with st.sidebar:
     st.markdown("---")
 
     # Download Notes Feature
-    if "messages" in st.session_state and len(st.session_state.messages) > 0:
+    if "messages" in st.session_state and len(st.session_state.messages) > 1:
         chat_history = "\n\n".join([f"{msg['role'].upper()}:\n{msg['content']}" for msg in st.session_state.messages])
         st.download_button(
             label="📥 Download Notes as TXT",
@@ -110,7 +110,9 @@ with st.sidebar:
         )
     
     if st.button("Clear Chat History", use_container_width=True):
-        st.session_state.messages = []
+        st.session_state.messages = [
+            {"role": "assistant", "content": "👋 Hello! I am Aisa. Send a message, upload a file, or generate a quiz to begin studying."}
+        ]
         st.rerun()
         
     st.markdown("---")
@@ -123,10 +125,10 @@ else:
     st.error("Aisa is offline 😴")
     st.stop()
 
-# 4. Top Header & Stats Layout (Beautified)
+# 4. Top Header & Stats Layout (Beautified & Left Aligned)
 st.markdown(
     """
-    <div style='text-align: center; margin-bottom: 20px;'>
+    <div style='text-align: left; margin-bottom: 20px;'>
         <h1 style='color: #F2A900; margin-bottom: 0px;'>😼 Aisa AI</h1>
         <p style='color: #888; font-size: 18px;'>Your Applied AI Studies Assistant</p>
     </div>
@@ -137,11 +139,9 @@ st.markdown(
 
 # 5. Chat Logic
 if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-# Welcome message if chat is empty
-if len(st.session_state.messages) == 0:
-    st.info("👋 Hello! I am Aisa. Send a message, upload a file, or generate a quiz to begin studying.")
+    st.session_state.messages = [
+        {"role": "assistant", "content": "👋 Hello! I am Aisa. Send a message, upload a file, or generate a quiz to begin studying."}
+    ]
 
 # Display history with custom HTML and Avatars
 for message in st.session_state.messages:
