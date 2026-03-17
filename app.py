@@ -16,14 +16,26 @@ with st.sidebar:
     
     quiz_mode = st.toggle("Enable Quiz Mode")
     
-    if st.button("Generate Flashcards", use_container_width=True):
+   if st.button("Generate Flashcards", use_container_width=True):
         if study_topic:
-            user_msg = f"Can you give me 5 study flashcards for {study_topic}? Format them clearly with Q: and A:"
+            user_msg = f"Can you give me 5 study flashcards for {study_topic}?"
             st.session_state.messages.append({"role": "user", "content": user_msg})
             
             with st.spinner("Generating flashcards..."):
                 model = genai.GenerativeModel('gemini-2.5-flash')
-                response = model.generate_content(f"You are a helpful tutor.\n\nUser: {user_msg}")
+                
+                # Force Gemini to use interactive HTML tags for the flashcards
+                flashcard_prompt = f"""
+                You are a helpful tutor. Provide 5 study flashcards about {study_topic}. 
+                Format EACH flashcard strictly using this exact HTML structure:
+                <details style="background-color: #2D2D2D; padding: 15px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #444;">
+                  <summary style="font-weight: bold; cursor: pointer; font-size: 16px;">💡 Question: [Your Question]</summary>
+                  <p style="margin-top: 15px; color: #E0E0E0; font-size: 15px;">[Your Answer]</p>
+                </details>
+                Do not include markdown code blocks. Just output the raw HTML.
+                """
+                
+                response = model.generate_content(flashcard_prompt)
                 st.session_state.messages.append({"role": "assistant", "content": response.text})
             st.rerun()
         else:
