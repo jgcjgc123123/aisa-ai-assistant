@@ -40,7 +40,7 @@ with st.sidebar:
             st.rerun()
         else:
             st.warning("Please enter a topic first!")
-
+            
     st.markdown("---")
     
     # Resource Links Feature
