@@ -7,7 +7,7 @@ st.set_page_config(page_title="Aisa - AI Studies Assistant", page_icon="😼", l
 
 # 2. Sidebar Layout
 with st.sidebar:
-    st.title("😼 Aisa Settings")
+    st.title("😼 Aisa does not handle [enrollment](https://cit.edu/enrollment/) or [payments](https://cit.edu/payment-options/)!")
     st.markdown("---")
     st.info("Aisa is your smart upperclassman for Applied AI, Capstone, and Networking 2.")
     
