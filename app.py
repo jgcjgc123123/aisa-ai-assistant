@@ -1,18 +1,38 @@
 import streamlit as st
 import google.generativeai as genai
-import time
 
-# 1. Page configuration
+# 1. Page Configuration
 st.set_page_config(page_title="Aisa - AI Studies Assistant", page_icon="😼", layout="wide")
 
-# 2. Sidebar layout
+# 2. Sidebar Layout
 with st.sidebar:
     st.subheader("😼 Aisa does not handle [enrollment](https://cit.edu/enrollment/) or [payments](https://cit.edu/payment-options/)!")
         
     st.markdown("---")
     
-    # Quick links
-    st.subheader("🔗 Quick Links")
+    # Study Modes Feature
+    st.subheader("🎯 Study Modes")
+    study_topic = st.text_input("What topic are we focusing on?", placeholder="e.g., OSI Model, Subnetting")
+    
+    quiz_mode = st.toggle("Enable Quiz Mode")
+    
+    if st.button("Generate Flashcards", use_container_width=True):
+        if study_topic:
+            user_msg = f"Can you give me 5 study flashcards for {study_topic}? Format them clearly with Q: and A:"
+            st.session_state.messages.append({"role": "user", "content": user_msg})
+            
+            with st.spinner("Generating flashcards..."):
+                model = genai.GenerativeModel('gemini-2.5-flash')
+                response = model.generate_content(f"You are a helpful tutor.\n\nUser: {user_msg}")
+                st.session_state.messages.append({"role": "assistant", "content": response.text})
+            st.rerun()
+        else:
+            st.warning("Please enter a topic first!")
+
+    st.markdown("---")
+    
+    # Resource Links Feature
+    st.subheader("🔗 Resource Links")
     st.markdown("- [CIT-U Homepage](https://cit.edu/)")
     st.markdown("- [Academic Calendar 25-26](https://cit.edu/collegiate-calendar-for-academic-year-2025-2026/)")
     st.markdown("- [Vision-Mission](https://cit.edu/cit-vision-mission-primer/)")
@@ -22,23 +42,23 @@ with st.sidebar:
     
     st.markdown("---")
 
-    # Download chat feature
+    # Download Notes Feature
     if "messages" in st.session_state and len(st.session_state.messages) > 0:
         chat_history = "\n\n".join([f"{msg['role'].upper()}:\n{msg['content']}" for msg in st.session_state.messages])
         st.download_button(
-            label="📥 Download chat as .txt file",
+            label="📥 Download Notes as TXT",
             data=chat_history,
             file_name="aisa_study_notes.txt",
             mime="text/plain",
             use_container_width=True
         )
     
-    if st.button("🗑️ Clear Chat History", use_container_width=True):
+    if st.button("Clear Chat History", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
         
     st.markdown("---")
-    st.caption("March 2026 ©")
+    st.caption("Built for CIT-U Technologians ⚡")
 
 # 3. API Configuration
 if "GEMINI_API_KEY" in st.secrets:
@@ -59,7 +79,14 @@ Key guidelines:
 4. Always prioritize clarity in technical explanations.
 """
 
-# 4. Header
+# Adjust prompt if Quiz Mode is active
+if quiz_mode:
+    if study_topic:
+        SYSTEM_PROMPT += f"\n\nQUIZ MODE ACTIVE: The user is studying '{study_topic}'. Ask them one question at a time to test their knowledge. Wait for their answer, evaluate it, and then ask the next question."
+    else:
+        SYSTEM_PROMPT += "\n\nQUIZ MODE ACTIVE: Ask the user what specific topic they want to be quizzed on, then start asking them questions about it one by one."
+
+# 4. Top Header & Stats Layout
 st.title("😼 Aisa AI")
 st.caption("Your Applied AI Studies Assistant")
 
