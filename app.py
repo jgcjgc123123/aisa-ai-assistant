@@ -37,19 +37,23 @@ with st.sidebar:
             st.session_state.messages.append({"role": "user", "content": user_msg})
             
             with st.spinner("Starting quiz..."):
-                model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=SYSTEM_PROMPT)
-                
-                # Build history for the quiz button
-                formatted_history = []
-                for msg in st.session_state.messages[:-1]:
-                    role = "model" if msg["role"] == "assistant" else "user"
-                    formatted_history.append({"role": role, "parts": [msg["content"]]})
-                
-                formatted_history.append({"role": "user", "parts": [user_msg]})
-                
-                response = model.generate_content(formatted_history)
-                st.session_state.messages.append({"role": "assistant", "content": response.text})
-            st.rerun()
+                try:
+                    model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=SYSTEM_PROMPT)
+                    
+                    # Build history for the quiz button
+                    formatted_history = []
+                    for msg in st.session_state.messages[:-1]:
+                        role = "model" if msg["role"] == "assistant" else "user"
+                        formatted_history.append({"role": role, "parts": [msg["content"]]})
+                    
+                    formatted_history.append({"role": "user", "parts": [user_msg]})
+                    
+                    response = model.generate_content(formatted_history)
+                    st.session_state.messages.append({"role": "assistant", "content": response.text})
+                    st.rerun()
+                except Exception as e:
+                    st.session_state.messages.pop()
+                    st.error("Aisa is overloaded! Please wait a minute and try again. ⏳")
         else:
             st.warning("Please enter a topic first!")
             
@@ -59,21 +63,25 @@ with st.sidebar:
             st.session_state.messages.append({"role": "user", "content": user_msg})
             
             with st.spinner("Generating flashcards..."):
-                model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=SYSTEM_PROMPT)
-                
-                flashcard_prompt = f"""
-                You are a helpful tutor. Provide 5 study flashcards about {study_topic}. 
-                Format EACH flashcard strictly using this exact HTML structure:
-                <details style="background-color: #2D2D2D; padding: 15px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #444;">
-                  <summary style="font-weight: bold; cursor: pointer; font-size: 16px;">💡 Question: [Your Question]</summary>
-                  <p style="margin-top: 15px; color: #E0E0E0; font-size: 15px;">[Your Answer]</p>
-                </details>
-                Do not include markdown code blocks. Just output the raw HTML.
-                """
-                
-                response = model.generate_content(flashcard_prompt)
-                st.session_state.messages.append({"role": "assistant", "content": response.text})
-            st.rerun()
+                try:
+                    model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=SYSTEM_PROMPT)
+                    
+                    flashcard_prompt = f"""
+                    You are a helpful tutor. Provide 5 study flashcards about {study_topic}. 
+                    Format EACH flashcard strictly using this exact HTML structure:
+                    <details style="background-color: #2D2D2D; padding: 15px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #444;">
+                      <summary style="font-weight: bold; cursor: pointer; font-size: 16px;">💡 Question: [Your Question]</summary>
+                      <p style="margin-top: 15px; color: #E0E0E0; font-size: 15px;">[Your Answer]</p>
+                    </details>
+                    Do not include markdown code blocks. Just output the raw HTML.
+                    """
+                    
+                    response = model.generate_content(flashcard_prompt)
+                    st.session_state.messages.append({"role": "assistant", "content": response.text})
+                    st.rerun()
+                except Exception as e:
+                    st.session_state.messages.pop()
+                    st.error("Aisa is overloaded! Please wait a minute and try again. ⏳")
         else:
             st.warning("Please enter a topic first!")
             
@@ -170,29 +178,32 @@ if prompt := st.chat_input("How can I help with your studies today?", accept_fil
     )
     
     with st.spinner("Aisa is thinking..."):
-        model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=SYSTEM_PROMPT)
-        
-        # Build history for the main chat
-        formatted_history = []
-        for msg in st.session_state.messages[:-1]:
-            role = "model" if msg["role"] == "assistant" else "user"
-            formatted_history.append({"role": role, "parts": [msg["content"]]})
+        try:
+            model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=SYSTEM_PROMPT)
             
-        current_parts = []
-        if user_text:
-            current_parts.append(user_text)
-            
-        if user_files:
-            for f in user_files:
-                current_parts.append({
-                    "mime_type": f.type,
-                    "data": f.getvalue()
-                })
+            # Build history for the main chat
+            formatted_history = []
+            for msg in st.session_state.messages[:-1]:
+                role = "model" if msg["role"] == "assistant" else "user"
+                formatted_history.append({"role": role, "parts": [msg["content"]]})
                 
-        formatted_history.append({"role": "user", "parts": current_parts})
-        
-        response = model.generate_content(formatted_history)
-        
-        st.session_state.messages.append({"role": "assistant", "content": response.text})
-    
-    st.rerun()
+            current_parts = []
+            if user_text:
+                current_parts.append(user_text)
+                
+            if user_files:
+                for f in user_files:
+                    current_parts.append({
+                        "mime_type": f.type,
+                        "data": f.getvalue()
+                    })
+                    
+            formatted_history.append({"role": "user", "parts": current_parts})
+            
+            response = model.generate_content(formatted_history)
+            
+            st.session_state.messages.append({"role": "assistant", "content": response.text})
+            st.rerun()
+        except Exception as e:
+            st.session_state.messages.pop()
+            st.error("Aisa is overloaded! Please wait a minute and try again. ⏳")
