@@ -8,27 +8,6 @@ st.set_page_config(page_title="Aisa - AI Studies Assistant", page_icon="😼", l
 # 2. Sidebar Layout
 with st.sidebar:
     st.subheader("😼 Aisa does not handle [enrollment](https://cit.edu/enrollment/) or [payments](https://cit.edu/payment-options/)!")
-    st.markdown("---")
-    st.info("Aisa is your smart upperclassman for Applied AI, Capstone, and Networking 2.")
-    
-    # To-Do List Feature
-    st.subheader("📝 Quick To-Do List")
-    if "todos" not in st.session_state:
-        st.session_state.todos = []
-        
-    new_task = st.text_input("Add a new task:")
-    if st.button("Add Task") and new_task:
-        st.session_state.todos.append({"task": new_task, "done": False})
-        st.rerun()
-        
-    for i, todo in enumerate(st.session_state.todos):
-        is_done = st.checkbox(todo["task"], value=todo["done"], key=f"todo_{i}")
-        if is_done != todo["done"]:
-            st.session_state.todos[i]["done"] = is_done
-            
-    if st.button("Clear Finished Tasks"):
-        st.session_state.todos = [t for t in st.session_state.todos if not t["done"]]
-        st.rerun()
         
     st.markdown("---")
     
