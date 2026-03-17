@@ -73,18 +73,23 @@ for message in st.session_state.messages:
             unsafe_allow_html=True
         )
 
-# Main Area File Uploader
-uploaded_file = st.file_uploader("Attach a file (PDF, TXT, PNG, JPG)", type=["txt", "pdf", "png", "jpg", "jpeg"])
-
-# Chat Input
-if prompt := st.chat_input("How can I help with your studies today?"):
-    st.session_state.messages.append({"role": "user", "content": prompt})
+# Chat Input with built-in file upload (Requires Streamlit 1.43.0+)
+if prompt := st.chat_input("How can I help with your studies today?", accept_file=True, file_type=["txt", "pdf", "png", "jpg", "jpeg"]):
+    
+    # Extract text and files from the new prompt object
+    user_text = prompt.text
+    user_files = prompt.files
+    
+    # Define what to show in the chat history
+    display_text = user_text if user_text else "📎 Attached files"
+    
+    st.session_state.messages.append({"role": "user", "content": display_text})
     
     st.markdown(
         f"""
         <div style='display: flex; justify-content: flex-end;'>
             <div style='background-color: #0078D7; color: white; padding: 10px 15px; border-radius: 15px 15px 0px 15px; margin-bottom: 10px; max-width: 75%;'>
-                {prompt}
+                {display_text}
             </div>
         </div>
         """,
@@ -94,18 +99,21 @@ if prompt := st.chat_input("How can I help with your studies today?"):
     with st.spinner("Aisa is thinking..."):
         model = genai.GenerativeModel('gemini-2.5-flash')
         
-        # Prepare the content list for Gemini
-        contents = [{"role": "user", "parts": [SYSTEM_PROMPT, prompt]}]
-        
-        # Attach the file if one was uploaded
-        if uploaded_file is not None:
-            file_data = {
-                "mime_type": uploaded_file.type,
-                "data": uploaded_file.getvalue()
-            }
-            contents[0]["parts"].append(file_data)
-        
+        # Prepare parts for Gemini
+        parts = [SYSTEM_PROMPT]
+        if user_text:
+            parts.append(user_text)
+            
+        if user_files:
+            for f in user_files:
+                parts.append({
+                    "mime_type": f.type,
+                    "data": f.getvalue()
+                })
+                
+        contents = [{"role": "user", "parts": parts}]
         response = model.generate_content(contents)
+        
         st.session_state.messages.append({"role": "assistant", "content": response.text})
     
     st.rerun()
