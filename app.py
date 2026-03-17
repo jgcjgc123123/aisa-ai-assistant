@@ -38,8 +38,6 @@ with st.sidebar:
         st.rerun()
         
     st.markdown("---")
-        
-    st.markdown("---")
     st.caption("Built for CIT-U Technologians ⚡")
 
 # 3. API Configuration
