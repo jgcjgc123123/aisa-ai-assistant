@@ -10,13 +10,6 @@ with st.sidebar:
     st.markdown("---")
     st.info("Aisa is your smart upperclassman for Applied AI, Capstone, and Networking.")
     
-    # File Uploader added here
-    uploaded_file = st.file_uploader("Upload your study notes (.txt)", type=["txt"])
-    file_content = ""
-    if uploaded_file is not None:
-        file_content = uploaded_file.getvalue().decode("utf-8")
-        st.success("Notes uploaded successfully!")
-
     if st.button("Clear Chat History", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
@@ -80,6 +73,9 @@ for message in st.session_state.messages:
             unsafe_allow_html=True
         )
 
+# Main Area File Uploader
+uploaded_file = st.file_uploader("Attach a file (PDF, TXT, PNG, JPG)", type=["txt", "pdf", "png", "jpg", "jpeg"])
+
 # Chat Input
 if prompt := st.chat_input("How can I help with your studies today?"):
     st.session_state.messages.append({"role": "user", "content": prompt})
@@ -98,13 +94,18 @@ if prompt := st.chat_input("How can I help with your studies today?"):
     with st.spinner("Aisa is thinking..."):
         model = genai.GenerativeModel('gemini-2.5-flash')
         
-        # Combine the prompt with the uploaded file content if it exists
-        final_prompt = f"{SYSTEM_PROMPT}\n\n"
-        if file_content:
-            final_prompt += f"Context from uploaded notes:\n{file_content}\n\n"
-        final_prompt += f"User: {prompt}"
+        # Prepare the content list for Gemini
+        contents = [{"role": "user", "parts": [SYSTEM_PROMPT, prompt]}]
         
-        response = model.generate_content(final_prompt)
+        # Attach the file if one was uploaded
+        if uploaded_file is not None:
+            file_data = {
+                "mime_type": uploaded_file.type,
+                "data": uploaded_file.getvalue()
+            }
+            contents[0]["parts"].append(file_data)
+        
+        response = model.generate_content(contents)
         st.session_state.messages.append({"role": "assistant", "content": response.text})
     
     st.rerun()
