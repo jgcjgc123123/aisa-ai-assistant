@@ -10,6 +10,13 @@ with st.sidebar:
     st.markdown("---")
     st.info("Aisa is your smart upperclassman for Applied AI, Capstone, and Networking.")
     
+    # File Uploader added here
+    uploaded_file = st.file_uploader("Upload your study notes (.txt)", type=["txt"])
+    file_content = ""
+    if uploaded_file is not None:
+        file_content = uploaded_file.getvalue().decode("utf-8")
+        st.success("Notes uploaded successfully!")
+
     if st.button("Clear Chat History", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
@@ -75,10 +82,8 @@ for message in st.session_state.messages:
 
 # Chat Input
 if prompt := st.chat_input("How can I help with your studies today?"):
-    # Add user message to state
     st.session_state.messages.append({"role": "user", "content": prompt})
     
-    # Display the user message immediately
     st.markdown(
         f"""
         <div style='display: flex; justify-content: flex-end;'>
@@ -90,11 +95,16 @@ if prompt := st.chat_input("How can I help with your studies today?"):
         unsafe_allow_html=True
     )
     
-    # Show spinner while waiting for the API
     with st.spinner("Aisa is thinking..."):
         model = genai.GenerativeModel('gemini-2.5-flash')
-        response = model.generate_content(f"{SYSTEM_PROMPT}\n\nUser: {prompt}")
+        
+        # Combine the prompt with the uploaded file content if it exists
+        final_prompt = f"{SYSTEM_PROMPT}\n\n"
+        if file_content:
+            final_prompt += f"Context from uploaded notes:\n{file_content}\n\n"
+        final_prompt += f"User: {prompt}"
+        
+        response = model.generate_content(final_prompt)
         st.session_state.messages.append({"role": "assistant", "content": response.text})
     
-    # Rerun to cleanly load the new history
     st.rerun()
