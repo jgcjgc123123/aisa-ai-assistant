@@ -16,7 +16,7 @@ with st.sidebar:
     
     quiz_mode = st.toggle("Enable Quiz Mode")
     
-   if st.button("Generate Flashcards", use_container_width=True):
+    if st.button("Generate Flashcards", use_container_width=True):
         if study_topic:
             user_msg = f"Can you give me 5 study flashcards for {study_topic}?"
             st.session_state.messages.append({"role": "user", "content": user_msg})
