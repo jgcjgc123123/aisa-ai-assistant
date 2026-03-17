@@ -48,21 +48,53 @@ st.markdown("---")
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display history
+# Display history with custom HTML
 for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+    if message["role"] == "user":
+        st.markdown(
+            f"""
+            <div style='display: flex; justify-content: flex-end;'>
+                <div style='background-color: #0078D7; color: white; padding: 10px 15px; border-radius: 15px 15px 0px 15px; margin-bottom: 10px; max-width: 75%;'>
+                    {message["content"]}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    else:
+        st.markdown(
+            f"""
+            <div style='display: flex; justify-content: flex-start;'>
+                <div style='background-color: #2D2D2D; color: white; padding: 10px 15px; border-radius: 15px 15px 15px 0px; margin-bottom: 10px; max-width: 75%;'>
+                    {message["content"]}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
 # Chat Input
 if prompt := st.chat_input("How can I help with your studies today?"):
+    # Add user message to state
     st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    with st.chat_message("assistant"):
+    
+    # Display the user message immediately
+    st.markdown(
+        f"""
+        <div style='display: flex; justify-content: flex-end;'>
+            <div style='background-color: #0078D7; color: white; padding: 10px 15px; border-radius: 15px 15px 0px 15px; margin-bottom: 10px; max-width: 75%;'>
+                {prompt}
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    
+    # Show spinner while waiting for the API
+    with st.spinner("Aisa is thinking..."):
         model = genai.GenerativeModel('gemini-2.5-flash')
-        # Simple string concatenation for the system prompt
         response = model.generate_content(f"{SYSTEM_PROMPT}\n\nUser: {prompt}")
-        st.markdown(response.text)
-        
-    st.session_state.messages.append({"role": "assistant", "content": response.text})
+        st.session_state.messages.append({"role": "assistant", "content": response.text})
+    
+    # Rerun to cleanly load the new history
+    st.rerun()
