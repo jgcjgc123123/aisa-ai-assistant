@@ -106,14 +106,14 @@ with st.sidebar:
     if "messages" in st.session_state and len(st.session_state.messages) > 1:
         chat_history = "\n\n".join([f"{msg['role'].upper()}:\n{msg['content']}" for msg in st.session_state.messages])
         st.download_button(
-            label="📥 Download Notes as TXT",
+            label="📥 Download chat as .txt",
             data=chat_history,
             file_name="aisa_study_notes.txt",
             mime="text/plain",
             use_container_width=True
         )
     
-    if st.button("Clear Chat History", use_container_width=True):
+    if st.button("🗑️ Clear chat history", use_container_width=True):
         st.session_state.messages = [
             {"role": "assistant", "content": "👋 Hello! I am Aisa. Send a message, upload a file, or generate a quiz to begin studying."}
         ]
