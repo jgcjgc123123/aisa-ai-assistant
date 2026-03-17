@@ -57,8 +57,8 @@ with st.sidebar:
             
     st.markdown("---")
     
-    # Resource Links Feature
-    st.subheader("🔗 Resource Links")
+    # Quick Links Feature
+    st.subheader("🔗 Quick Links")
     st.markdown("- [CIT-U Homepage](https://cit.edu/)")
     st.markdown("- [Academic Calendar 25-26](https://cit.edu/collegiate-calendar-for-academic-year-2025-2026/)")
     st.markdown("- [Vision-Mission](https://cit.edu/cit-vision-mission-primer/)")
@@ -84,7 +84,7 @@ with st.sidebar:
         st.rerun()
         
     st.markdown("---")
-    st.caption("Built for CIT-U Technologians ⚡")
+    st.caption("March 2026 ©")
 
 # 3. API Configuration
 if "GEMINI_API_KEY" in st.secrets:
