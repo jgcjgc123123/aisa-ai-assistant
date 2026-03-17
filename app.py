@@ -1,5 +1,6 @@
 import streamlit as st
 import google.generativeai as genai
+import time
 
 # 1. Page Configuration
 st.set_page_config(page_title="Aisa - AI Studies Assistant", page_icon="😼", layout="wide")
@@ -8,7 +9,36 @@ st.set_page_config(page_title="Aisa - AI Studies Assistant", page_icon="😼", l
 with st.sidebar:
     st.title("😼 Aisa Settings")
     st.markdown("---")
-    st.info("Aisa is your smart upperclassman for Applied AI, Capstone, and Networking.")
+    st.info("Aisa is your smart upperclassman for Applied AI, Capstone, and Networking 2.")
+    
+    # To-Do List Feature
+    st.subheader("📝 Quick To-Do List")
+    if "todos" not in st.session_state:
+        st.session_state.todos = []
+        
+    new_task = st.text_input("Add a new task:")
+    if st.button("Add Task") and new_task:
+        st.session_state.todos.append({"task": new_task, "done": False})
+        st.rerun()
+        
+    for i, todo in enumerate(st.session_state.todos):
+        is_done = st.checkbox(todo["task"], value=todo["done"], key=f"todo_{i}")
+        if is_done != todo["done"]:
+            st.session_state.todos[i]["done"] = is_done
+            
+    if st.button("Clear Finished Tasks"):
+        st.session_state.todos = [t for t in st.session_state.todos if not t["done"]]
+        st.rerun()
+        
+    st.markdown("---")
+    
+    # Resource Links Feature
+    st.subheader("🔗 Resource Links")
+    st.markdown("- [CIT-U Homepage](https://cit.edu/)")
+    st.markdown("- [Academic Calendar 25-26](https://cit.edu/collegiate-calendar-for-academic-year-2025-2026/)")
+    st.markdown("- [CIT-U Enrollment](https://cit.edu/enrollment/)")
+    
+    st.markdown("---")
 
     # Download Notes Feature
     if "messages" in st.session_state and len(st.session_state.messages) > 0:
@@ -25,19 +55,7 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
         
-    # Study Timer Feature
-    st.subheader("⏱️ Study Timer")
-    minutes = st.number_input("Minutes", min_value=1, max_value=60, value=25)
-    
-    if st.button("Start Timer", use_container_width=True):
-        timer_display = st.empty()
-        total_seconds = minutes * 60
-        for remaining in range(total_seconds, -1, -1):
-            mins, secs = divmod(remaining, 60)
-            timer_display.markdown(f"### ⏳ {mins:02d}:{secs:02d}")
-            time.sleep(1)
-        st.success("Time is up! Take a break.")
-        st.balloons()
+    st.markdown("---")
         
     st.markdown("---")
     st.caption("Built for CIT-U Technologians ⚡")
@@ -63,7 +81,6 @@ Key guidelines:
 
 # 4. Top Header & Stats Layout
 st.title("😼 Aisa AI")
-
 st.caption("Your Applied AI Studies Assistant")
 
 # 5. Chat Logic
