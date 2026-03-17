@@ -14,8 +14,9 @@ with st.sidebar:
     st.subheader("🎯 Study Modes")
     study_topic = st.text_input("What topic are we focusing on?", placeholder="e.g., OSI Model, Subnetting")
     
-        quiz_btn = st.button("Generate Quiz", use_container_width=True)
-        flashcard_btn = st.button("Generate Flashcards", use_container_width=True)
+    # Buttons are now stacked vertically
+    quiz_btn = st.button("Generate Quiz", use_container_width=True)
+    flashcard_btn = st.button("Generate Flashcards", use_container_width=True)
     
     if quiz_btn:
         if study_topic:
@@ -137,14 +138,12 @@ for message in st.session_state.messages:
             unsafe_allow_html=True
         )
 
-# Chat Input with built-in file upload (Requires Streamlit 1.43.0+)
+# Chat Input with built-in file upload
 if prompt := st.chat_input("How can I help with your studies today?", accept_file=True, file_type=["txt", "pdf", "png", "jpg", "jpeg"]):
     
-    # Extract text and files from the new prompt object
     user_text = prompt.text
     user_files = prompt.files
     
-    # Define what to show in the chat history
     display_text = user_text if user_text else "📎 Attached files"
     
     st.session_state.messages.append({"role": "user", "content": display_text})
@@ -163,7 +162,6 @@ if prompt := st.chat_input("How can I help with your studies today?", accept_fil
     with st.spinner("Aisa is thinking..."):
         model = genai.GenerativeModel('gemini-2.5-flash')
         
-        # Prepare parts for Gemini
         parts = [SYSTEM_PROMPT]
         if user_text:
             parts.append(user_text)
