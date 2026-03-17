@@ -2,17 +2,17 @@ import streamlit as st
 import google.generativeai as genai
 import time
 
-# 1. Page Configuration
+# 1. Page configuration
 st.set_page_config(page_title="Aisa - AI Studies Assistant", page_icon="😼", layout="wide")
 
-# 2. Sidebar Layout
+# 2. Sidebar layout
 with st.sidebar:
     st.subheader("😼 Aisa does not handle [enrollment](https://cit.edu/enrollment/) or [payments](https://cit.edu/payment-options/)!")
         
     st.markdown("---")
     
-    # Resource Links Feature
-    st.subheader("🔗 Resource Links")
+    # Quick links
+    st.subheader("🔗 Quick Links")
     st.markdown("- [CIT-U Homepage](https://cit.edu/)")
     st.markdown("- [Academic Calendar 25-26](https://cit.edu/collegiate-calendar-for-academic-year-2025-2026/)")
     st.markdown("- [Vision-Mission](https://cit.edu/cit-vision-mission-primer/)")
@@ -22,7 +22,7 @@ with st.sidebar:
     
     st.markdown("---")
 
-    # Download Notes Feature
+    # Download chat feature
     if "messages" in st.session_state and len(st.session_state.messages) > 0:
         chat_history = "\n\n".join([f"{msg['role'].upper()}:\n{msg['content']}" for msg in st.session_state.messages])
         st.download_button(
@@ -38,7 +38,7 @@ with st.sidebar:
         st.rerun()
         
     st.markdown("---")
-    st.caption("Built for CIT-U Technologians ⚡")
+    st.caption("March 2026 ©")
 
 # 3. API Configuration
 if "GEMINI_API_KEY" in st.secrets:
@@ -59,7 +59,7 @@ Key guidelines:
 4. Always prioritize clarity in technical explanations.
 """
 
-# 4. Top Header & Stats Layout
+# 4. Header
 st.title("😼 Aisa AI")
 st.caption("Your Applied AI Studies Assistant")
 
