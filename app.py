@@ -9,11 +9,36 @@ with st.sidebar:
     st.title("😼 Aisa Settings")
     st.markdown("---")
     st.info("Aisa is your smart upperclassman for Applied AI, Capstone, and Networking.")
+
+    # Download Notes Feature
+    if "messages" in st.session_state and len(st.session_state.messages) > 0:
+        chat_history = "\n\n".join([f"{msg['role'].upper()}:\n{msg['content']}" for msg in st.session_state.messages])
+        st.download_button(
+            label="📥 Download Notes as TXT",
+            data=chat_history,
+            file_name="aisa_study_notes.txt",
+            mime="text/plain",
+            use_container_width=True
+        )
     
     if st.button("Clear Chat History", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
+        
+    # Study Timer Feature
+    st.subheader("⏱️ Study Timer")
+    minutes = st.number_input("Minutes", min_value=1, max_value=60, value=25)
     
+    if st.button("Start Timer", use_container_width=True):
+        timer_display = st.empty()
+        total_seconds = minutes * 60
+        for remaining in range(total_seconds, -1, -1):
+            mins, secs = divmod(remaining, 60)
+            timer_display.markdown(f"### ⏳ {mins:02d}:{secs:02d}")
+            time.sleep(1)
+        st.success("Time is up! Take a break.")
+        st.balloons()
+        
     st.markdown("---")
     st.caption("Built for CIT-U Technologians ⚡")
 
@@ -38,11 +63,8 @@ Key guidelines:
 
 # 4. Top Header & Stats Layout
 st.title("😼 Aisa AI")
-col1, col2, col3 = st.columns(3)
-col1.metric("Status", "Online")
-col2.metric("Model", "Gemini 2.5 Flash")
-col3.metric("School", "CIT-U")
-st.markdown("---")
+
+st.caption("Your Applied AI Studies Assistant")
 
 # 5. Chat Logic
 if "messages" not in st.session_state:
