@@ -1,5 +1,6 @@
 import streamlit as st
 import google.generativeai as genai
+import re
 
 # 1. Page Configuration
 st.set_page_config(page_title="Aisa - AI Studies Assistant", page_icon="😼", layout="wide")
@@ -16,6 +17,9 @@ Key guidelines:
 3. If asked about CIT-U specifically, show school spirit (Technologian pride!).
 4. Always prioritize clarity in technical explanations.
 """
+
+# Admin keywords for the redirect feature
+ADMIN_KEYWORDS = [r"\benroll", r"\benrollment", r"\btuition", r"\bpay", r"\bpayment", r"\bfee", r"\bfees", r"\bcost"]
 
 # 2. Sidebar Layout
 with st.sidebar:
@@ -192,33 +196,46 @@ if prompt := st.chat_input("How can I help with your studies today?", accept_fil
         unsafe_allow_html=True
     )
     
-    with st.spinner("Aisa is thinking..."):
-        try:
-            model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=SYSTEM_PROMPT)
-            
-            # Build history for the main chat
-            formatted_history = []
-            for msg in st.session_state.messages[:-1]:
-                role = "model" if msg["role"] == "assistant" else "user"
-                formatted_history.append({"role": role, "parts": [msg["content"]]})
+    # Check for admin keywords before calling the API
+    needs_admin_redirect = False
+    if user_text:
+        for keyword in ADMIN_KEYWORDS:
+            if re.search(keyword, user_text.lower()):
+                needs_admin_redirect = True
+                break
+    
+    if needs_admin_redirect:
+        admin_msg = "It looks like you're asking about enrollment or payments! For the most accurate information, please visit the official CIT-U pages:\n\n* [Enrollment Guide](https://cit.edu/enrollment/)\n* [Payment Options](https://cit.edu/payment-options/)"
+        st.session_state.messages.append({"role": "assistant", "content": admin_msg})
+        st.rerun()
+    else:
+        with st.spinner("Aisa is thinking..."):
+            try:
+                model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=SYSTEM_PROMPT)
                 
-            current_parts = []
-            if user_text:
-                current_parts.append(user_text)
-                
-            if user_files:
-                for f in user_files:
-                    current_parts.append({
-                        "mime_type": f.type,
-                        "data": f.getvalue()
-                    })
+                # Build history for the main chat
+                formatted_history = []
+                for msg in st.session_state.messages[:-1]:
+                    role = "model" if msg["role"] == "assistant" else "user"
+                    formatted_history.append({"role": role, "parts": [msg["content"]]})
                     
-            formatted_history.append({"role": "user", "parts": current_parts})
-            
-            response = model.generate_content(formatted_history)
-            
-            st.session_state.messages.append({"role": "assistant", "content": response.text})
-            st.rerun()
-        except Exception as e:
-            st.session_state.messages.pop()
-            st.error("Aisa is overloaded! Please wait a minute and try again. ⏳")
+                current_parts = []
+                if user_text:
+                    current_parts.append(user_text)
+                    
+                if user_files:
+                    for f in user_files:
+                        current_parts.append({
+                            "mime_type": f.type,
+                            "data": f.getvalue()
+                        })
+                        
+                formatted_history.append({"role": "user", "parts": current_parts})
+                
+                response = model.generate_content(formatted_history)
+                
+                st.session_state.messages.append({"role": "assistant", "content": response.text})
+                st.rerun()
+            except Exception as e:
+                st.session_state.messages.pop()
+                st.error("Aisa is overloaded! Please wait a minute and try again. ⏳")
