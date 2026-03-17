@@ -36,7 +36,10 @@ with st.sidebar:
     st.subheader("🔗 Resource Links")
     st.markdown("- [CIT-U Homepage](https://cit.edu/)")
     st.markdown("- [Academic Calendar 25-26](https://cit.edu/collegiate-calendar-for-academic-year-2025-2026/)")
-    st.markdown("- [CIT-U Enrollment](https://cit.edu/enrollment/)")
+    st.markdown("- [Vision-Mission](https://cit.edu/cit-vision-mission-primer/)")
+    st.markdown("- [College Programs](https://cit.edu/cit-university-programs/)")
+    st.markdown("- [LAIR](https://lair.education/)")
+    st.markdown("- [WITS](https://student.cituwits.com/)")
     
     st.markdown("---")
 
