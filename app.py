@@ -14,9 +14,26 @@ with st.sidebar:
     st.subheader("🎯 Study Modes")
     study_topic = st.text_input("What topic are we focusing on?", placeholder="e.g., OSI Model, Subnetting")
     
-    quiz_mode = st.toggle("Enable Quiz Mode")
+    col1, col2 = st.columns(2)
+    with col1:
+        quiz_btn = st.button("Generate Quiz", use_container_width=True)
+    with col2:
+        flashcard_btn = st.button("Generate Flashcards", use_container_width=True)
     
-    if st.button("Generate Flashcards", use_container_width=True):
+    if quiz_btn:
+        if study_topic:
+            user_msg = f"Let's start a quiz on {study_topic}. Ask me the first question to test my knowledge. Wait for my answer before asking the next one."
+            st.session_state.messages.append({"role": "user", "content": user_msg})
+            
+            with st.spinner("Starting quiz..."):
+                model = genai.GenerativeModel('gemini-2.5-flash')
+                response = model.generate_content(f"You are a helpful tutor.\n\nUser: {user_msg}")
+                st.session_state.messages.append({"role": "assistant", "content": response.text})
+            st.rerun()
+        else:
+            st.warning("Please enter a topic first!")
+            
+    if flashcard_btn:
         if study_topic:
             user_msg = f"Can you give me 5 study flashcards for {study_topic}?"
             st.session_state.messages.append({"role": "user", "content": user_msg})
@@ -24,7 +41,6 @@ with st.sidebar:
             with st.spinner("Generating flashcards..."):
                 model = genai.GenerativeModel('gemini-2.5-flash')
                 
-                # Force Gemini to use interactive HTML tags for the flashcards
                 flashcard_prompt = f"""
                 You are a helpful tutor. Provide 5 study flashcards about {study_topic}. 
                 Format EACH flashcard strictly using this exact HTML structure:
@@ -90,13 +106,6 @@ Key guidelines:
 3. If asked about CIT-U specifically, show school spirit (Technologian pride!).
 4. Always prioritize clarity in technical explanations.
 """
-
-# Adjust prompt if Quiz Mode is active
-if quiz_mode:
-    if study_topic:
-        SYSTEM_PROMPT += f"\n\nQUIZ MODE ACTIVE: The user is studying '{study_topic}'. Ask them one question at a time to test their knowledge. Wait for their answer, evaluate it, and then ask the next question."
-    else:
-        SYSTEM_PROMPT += "\n\nQUIZ MODE ACTIVE: Ask the user what specific topic they want to be quizzed on, then start asking them questions about it one by one."
 
 # 4. Top Header & Stats Layout
 st.title("😼 Aisa AI")
