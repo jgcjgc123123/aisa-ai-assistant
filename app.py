@@ -1,5 +1,5 @@
 import streamlit as st
-from openai import OpenAI
+from groq import Groq
 import re
 
 # 1. Page Configuration
@@ -20,11 +20,8 @@ Key guidelines:
 ADMIN_KEYWORDS = [r"\benroll", r"\benrollment", r"\btuition", r"\bpay", r"\bpayment", r"\bfee", r"\bfees", r"\bcost"]
 
 # 3. API Configuration
-if "DEEPSEEK_API_KEY" in st.secrets:
-    client = OpenAI(
-        api_key=st.secrets["DEEPSEEK_API_KEY"],
-        base_url="https://api.deepseek.com"
-    )
+if "GROQ_API_KEY" in st.secrets:
+    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 else:
     st.error("Aisa is offline 😴")
     st.stop()
@@ -49,7 +46,7 @@ with st.sidebar:
                 try:
                     messages = [{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages
                     response = client.chat.completions.create(
-                        model="deepseek-chat",
+                        model="llama-3.3-70b-versatile",
                         messages=messages
                     )
                     reply = response.choices[0].message.content
@@ -57,7 +54,7 @@ with st.sidebar:
                     st.rerun()
                 except Exception as e:
                     st.session_state.messages.pop()
-                    st.error("Aisa is overloaded! Please wait a minute and try again. ⏳")
+                    st.error(f"System Error: {e}")
         else:
             st.warning("Please enter a topic first!")
             
@@ -80,7 +77,7 @@ with st.sidebar:
                     
                     messages = [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": flashcard_prompt}]
                     response = client.chat.completions.create(
-                        model="deepseek-chat",
+                        model="llama-3.3-70b-versatile",
                         messages=messages
                     )
                     reply = response.choices[0].message.content
@@ -88,7 +85,7 @@ with st.sidebar:
                     st.rerun()
                 except Exception as e:
                     st.session_state.messages.pop()
-                    st.error("Aisa is overloaded! Please wait a minute and try again. ⏳")
+                    st.error(f"System Error: {e}")
         else:
             st.warning("Please enter a topic first!")
             
@@ -166,7 +163,7 @@ for message in st.session_state.messages:
             unsafe_allow_html=True
         )
 
-# Chat Input (Removed file upload since DeepSeek chat doesn't natively handle them this way)
+# Chat Input 
 if prompt := st.chat_input("How can I help with your studies today?"):
     
     user_text = prompt
@@ -201,7 +198,7 @@ if prompt := st.chat_input("How can I help with your studies today?"):
                 messages = [{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages
                 
                 response = client.chat.completions.create(
-                    model="deepseek-chat",
+                    model="llama-3.3-70b-versatile",
                     messages=messages
                 )
                 
@@ -210,4 +207,4 @@ if prompt := st.chat_input("How can I help with your studies today?"):
                 st.rerun()
             except Exception as e:
                 st.session_state.messages.pop()
-                st.error("Aisa is overloaded! Please wait a minute and try again. ⏳")
+                st.error(f"System Error: {e}")
