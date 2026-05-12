@@ -121,24 +121,29 @@ def web_search(query: str) -> str:
             return f"[Search error: {e}]"
 
 # Agent decision: should we search the web?
-AGENT_DECISION_PROMPT = """You are a routing agent. Given the user's message, decide if a web search is needed.
+AGENT_DECISION_PROMPT = """You are a strict routing agent. Decide if a web search is absolutely necessary.
 Answer ONLY with valid JSON: {"needs_search": true, "search_query": "..."} or {"needs_search": false}
 
-Do NOT search for:
-- Greetings or small talk (e.g. "how are you", "hello", "thanks", "ok", "what's up", "who are you")
-- Quiz generation requests (e.g. "quiz me on...", "ask me questions about...")
-- Flashcard generation requests (e.g. "give me flashcards for...")
-- Questions answered by the uploaded PDF (RAG handles those)
+CRITICAL RULES - Do NOT search for:
+- Greetings, conversational filler, or small talk ("hi", "hello", "how are you", "what's up", "thanks").
+- Personal questions directed at you.
+- Requests to generate quizzes, flashcards, or code from scratch.
+- Questions that the uploaded PDF can answer.
 
-DO search for:
-- Any factual question (e.g. "What is networking?", "Explain recursion", "How does TCP/IP work?")
-- Current events, news, trends (e.g. "What happened in AI today?")
-- Specific people, tools, technologies, or topics the user wants to learn about
+ONLY search for:
+- General knowledge or information-related queries (e.g., "how does photosynthesis work", "history of the Roman Empire", "what is the capital of Japan").
+- Factual data or current tech events outside of standard knowledge.
 
 User message: {user_message}
 """
 
 def agent_decide_search(user_message: str) -> dict:
+    # Short-circuit basic greetings to prevent unnecessary API calls and over-triggering
+    clean_msg = user_message.lower().strip()
+    greetings = ["hi", "hello", "hey", "how are you", "whats up", "what's up", "sup", "good morning", "good evening"]
+    if clean_msg in greetings:
+        return {"needs_search": False}
+
     try:
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
