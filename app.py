@@ -1,5 +1,7 @@
 import streamlit as st
 from groq import Groq
+from langfuse import Langfuse
+from langfuse.decorators import observe
 import re
 import io
 import os
@@ -11,6 +13,12 @@ import pdfplumber
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
+
+os.environ["LANGFUSE_SECRET_KEY"] = st.secrets["LANGFUSE_SECRET_KEY"]
+os.environ["LANGFUSE_PUBLIC_KEY"] = st.secrets["LANGFUSE_PUBLIC_KEY"]
+os.environ["LANGFUSE_HOST"] = st.secrets["LANGFUSE_HOST"]
+
+langfuse_client = Langfuse()
 
 # ─────────────────────────────────────────────
 # 1. Page Configuration
