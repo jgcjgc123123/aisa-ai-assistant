@@ -124,14 +124,16 @@ def web_search(query: str) -> str:
 AGENT_DECISION_PROMPT = """You are a routing agent. Given the user's message, decide if a web search is needed.
 Answer ONLY with valid JSON: {"needs_search": true, "search_query": "..."} or {"needs_search": false}
 
-Your DEFAULT answer is {"needs_search": true}. Search for almost everything.
+Do NOT search for:
+- Greetings or small talk (e.g. "how are you", "hello", "thanks", "ok", "what's up", "who are you")
+- Quiz generation requests (e.g. "quiz me on...", "ask me questions about...")
+- Flashcard generation requests (e.g. "give me flashcards for...")
+- Questions answered by the uploaded PDF (RAG handles those)
 
-The ONLY cases where you should NOT search:
-- The user is asking to generate a quiz (e.g. "quiz me on...", "start a quiz", "ask me questions about...")
-- The user is asking to generate flashcards (e.g. "give me flashcards", "make flashcards for...")
-- The user is making small talk with no question (e.g. "hello", "thanks", "ok got it")
-
-For ALL other messages — including "What is X?", "Explain X", "How does X work?", "Tell me about X" — set needs_search to true and form a clear, concise search_query.
+DO search for:
+- Any factual question (e.g. "What is networking?", "Explain recursion", "How does TCP/IP work?")
+- Current events, news, trends (e.g. "What happened in AI today?")
+- Specific people, tools, technologies, or topics the user wants to learn about
 
 User message: {user_message}
 """
@@ -148,8 +150,7 @@ def agent_decide_search(user_message: str) -> dict:
         raw = re.sub(r"```json|```", "", raw).strip()
         return json.loads(raw)
     except Exception:
-        # If parsing fails, default to searching to minimize hallucination
-        return {"needs_search": True, "search_query": user_message}
+        return {"needs_search": False}
 
 # ─────────────────────────────────────────────
 # 6. Session State Init
