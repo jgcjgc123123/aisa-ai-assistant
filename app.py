@@ -1,7 +1,6 @@
 import streamlit as st
 from groq import Groq
 from langfuse import Langfuse
-from langfuse.decorators import observe
 import re
 import io
 import os
