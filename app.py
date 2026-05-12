@@ -16,7 +16,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 os.environ["LANGFUSE_SECRET_KEY"] = st.secrets["LANGFUSE_SECRET_KEY"]
 os.environ["LANGFUSE_PUBLIC_KEY"] = st.secrets["LANGFUSE_PUBLIC_KEY"]
-os.environ["LANGFUSE_HOST"] = st.secrets["LANGFUSE_HOST"]
+os.environ["LANGFUSE_HOST"] = st.secrets["LANGFUSE_BASE_URL"]
 
 langfuse_client = Langfuse()
 
