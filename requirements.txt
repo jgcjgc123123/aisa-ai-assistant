@@ -7,3 +7,6 @@ pdfplumber
 sentence-transformers
 scikit-learn
 numpy
+
+#Langfuse
+langfuse
