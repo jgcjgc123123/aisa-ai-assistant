@@ -5,18 +5,18 @@ import io
 import os
 import json
 import requests
- 
+
 # PDF & RAG dependencies
 import pdfplumber
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
- 
+
 # ─────────────────────────────────────────────
 # 1. Page Configuration
 # ─────────────────────────────────────────────
 st.set_page_config(page_title="Aisa - AI Studies Assistant", page_icon="😼", layout="wide")
- 
+
 # ─────────────────────────────────────────────
 # 2. Prompts & Keywords
 # ─────────────────────────────────────────────
@@ -24,7 +24,7 @@ SYSTEM_PROMPT = """
 You are Aisa (Applied Intelligence Studies Assistant), a dedicated AI companion for students at Cebu Institute of Technology - University.
 Your tone is human-like, supportive, and slightly casual—like a smart upperclassman.
 You are an expert in app development, coding, and general IT courses and subjects.
- 
+
 Key guidelines:
 1. Be concise but insightful.
 2. Use relatable student language, but stay professional enough.
@@ -33,9 +33,9 @@ Key guidelines:
 5. When context from uploaded PDFs is provided, use it to give accurate, document-grounded answers.
 6. When web search results are provided, cite and synthesize them naturally.
 """
- 
+
 ADMIN_KEYWORDS = [r"\benroll", r"\benrollment", r"\btuition", r"\bpay", r"\bpayment", r"\bfee", r"\bfees", r"\bcost"]
- 
+
 # ─────────────────────────────────────────────
 # 3. API Configuration
 # ─────────────────────────────────────────────
@@ -44,16 +44,16 @@ if "GROQ_API_KEY" in st.secrets:
 else:
     st.error("Aisa is offline 😴 — GROQ_API_KEY missing.")
     st.stop()
- 
+
 TAVILY_API_KEY = st.secrets.get("TAVILY_API_KEY", None)
- 
+
 # ─────────────────────────────────────────────
 # 4. RAG Helpers
 # ─────────────────────────────────────────────
 @st.cache_resource(show_spinner=False)
 def load_embedder():
     return SentenceTransformer("all-MiniLM-L6-v2")
- 
+
 def extract_text_from_pdf(uploaded_file) -> str:
     text = ""
     with pdfplumber.open(io.BytesIO(uploaded_file.read())) as pdf:
@@ -62,7 +62,7 @@ def extract_text_from_pdf(uploaded_file) -> str:
             if page_text:
                 text += page_text + "\n"
     return text
- 
+
 def chunk_text(text: str, chunk_size: int = 400, overlap: int = 80) -> list[str]:
     words = text.split()
     chunks = []
@@ -72,16 +72,16 @@ def chunk_text(text: str, chunk_size: int = 400, overlap: int = 80) -> list[str]
         chunks.append(chunk)
         i += chunk_size - overlap
     return chunks
- 
+
 def build_vector_store(chunks: list[str], embedder) -> np.ndarray:
     return embedder.encode(chunks, show_progress_bar=False)
- 
+
 def retrieve_top_chunks(query: str, chunks: list[str], chunk_embeddings: np.ndarray, embedder, top_k: int = 4) -> list[str]:
     query_vec = embedder.encode([query])
     sims = cosine_similarity(query_vec, chunk_embeddings)[0]
     top_indices = np.argsort(sims)[::-1][:top_k]
     return [chunks[i] for i in top_indices]
- 
+
 # ─────────────────────────────────────────────
 # 5. Agentic Web Search
 # ─────────────────────────────────────────────
@@ -119,32 +119,38 @@ def web_search(query: str) -> str:
             return "\n".join(parts) if parts else "[No results found]"
         except Exception as e:
             return f"[Search error: {e}]"
- 
+
 # Agent decision: should we search the web?
 AGENT_DECISION_PROMPT = """You are a routing agent. Given the user's message, decide if a web search is needed.
 Answer ONLY with valid JSON: {"needs_search": true, "search_query": "..."} or {"needs_search": false}
- 
-Search if: the question involves current events, recent news, live data, or topics clearly beyond a textbook.
-Do NOT search if: the user asks general IT/CS concepts, coding help, quiz generation, or if uploaded PDF context is sufficient.
- 
+
+Your DEFAULT answer is {"needs_search": true}. Search for almost everything.
+
+The ONLY cases where you should NOT search:
+- The user is asking to generate a quiz (e.g. "quiz me on...", "start a quiz", "ask me questions about...")
+- The user is asking to generate flashcards (e.g. "give me flashcards", "make flashcards for...")
+- The user is making small talk with no question (e.g. "hello", "thanks", "ok got it")
+
+For ALL other messages — including "What is X?", "Explain X", "How does X work?", "Tell me about X" — set needs_search to true and form a clear, concise search_query.
+
 User message: {user_message}
 """
- 
+
 def agent_decide_search(user_message: str) -> dict:
     try:
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": AGENT_DECISION_PROMPT.format(user_message=user_message)}],
-            max_tokens=100,
+            max_tokens=120,
             temperature=0
         )
         raw = response.choices[0].message.content.strip()
-        # Strip markdown code fences if present
         raw = re.sub(r"```json|```", "", raw).strip()
         return json.loads(raw)
     except Exception:
-        return {"needs_search": False}
- 
+        # If parsing fails, default to searching to minimize hallucination
+        return {"needs_search": True, "search_query": user_message}
+
 # ─────────────────────────────────────────────
 # 6. Session State Init
 # ─────────────────────────────────────────────
@@ -158,20 +164,20 @@ if "pdf_embeddings" not in st.session_state:
     st.session_state.pdf_embeddings = None
 if "pdf_name" not in st.session_state:
     st.session_state.pdf_name = None
- 
+
 embedder = load_embedder()
- 
+
 # ─────────────────────────────────────────────
 # 7. Sidebar
 # ─────────────────────────────────────────────
 with st.sidebar:
     st.subheader("😼 Aisa does not handle [enrollment](https://cit.edu/enrollment/) or [payments](https://cit.edu/payment-options/)!")
     st.markdown("---")
- 
+
     # ── RAG: PDF Upload ──
     st.subheader("📄 Upload Study Material (RAG)")
     uploaded_pdf = st.file_uploader("Upload a PDF", type=["pdf"], label_visibility="collapsed")
- 
+
     if uploaded_pdf:
         if uploaded_pdf.name != st.session_state.pdf_name:
             with st.spinner("Reading and indexing your PDF..."):
@@ -190,16 +196,16 @@ with st.sidebar:
             st.session_state.pdf_embeddings = None
             st.session_state.pdf_name = None
             st.rerun()
- 
+
     st.markdown("---")
- 
+
     # ── Study Modes ──
     st.subheader("🎯 Study Modes")
     study_topic = st.text_input("What topic are we focusing on?", placeholder="e.g., OSI Model, Subnetting")
- 
+
     quiz_btn = st.button("Generate Quiz", use_container_width=True)
     flashcard_btn = st.button("Generate Flashcards", use_container_width=True)
- 
+
     if quiz_btn:
         if study_topic:
             user_msg = f"Let's start a quiz on {study_topic}. Ask me the first question to test my knowledge. Wait for my answer before asking the next one."
@@ -216,7 +222,7 @@ with st.sidebar:
                     st.error(f"System Error: {e}")
         else:
             st.warning("Please enter a topic first!")
- 
+
     if flashcard_btn:
         if study_topic:
             user_msg = f"Can you give me 5 study flashcards for {study_topic}?"
@@ -242,7 +248,7 @@ with st.sidebar:
                     st.error(f"System Error: {e}")
         else:
             st.warning("Please enter a topic first!")
- 
+
     st.markdown("---")
     st.subheader("🔗 Quick Links")
     st.markdown("- [CIT-U Homepage](https://cit.edu/)")
@@ -252,7 +258,7 @@ with st.sidebar:
     st.markdown("- [LAIR](https://lair.education/)")
     st.markdown("- [WITS](https://student.cituwits.com/)")
     st.markdown("---")
- 
+
     if "messages" in st.session_state and len(st.session_state.messages) > 1:
         chat_history = "\n\n".join([f"{msg['role'].upper()}:\n{msg['content']}" for msg in st.session_state.messages])
         st.download_button(
@@ -262,16 +268,16 @@ with st.sidebar:
             mime="text/plain",
             use_container_width=True
         )
- 
+
     if st.button("🗑️ Clear chat history", use_container_width=True):
         st.session_state.messages = [
             {"role": "assistant", "content": "👋 Hello! I am Aisa. Send a message, upload a PDF, or generate a quiz to begin studying."}
         ]
         st.rerun()
- 
+
     st.markdown("---")
     st.caption("May 2026 ©")
- 
+
 # ─────────────────────────────────────────────
 # 8. Header
 # ─────────────────────────────────────────────
@@ -288,7 +294,7 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
- 
+
 # ─────────────────────────────────────────────
 # 9. Render Chat History
 # ─────────────────────────────────────────────
@@ -317,15 +323,15 @@ for message in st.session_state.messages:
             """,
             unsafe_allow_html=True
         )
- 
+
 # ─────────────────────────────────────────────
 # 10. Chat Input & Agent Pipeline
 # ─────────────────────────────────────────────
 if prompt := st.chat_input("How can I help with your studies today?"):
- 
+
     user_text = prompt
     st.session_state.messages.append({"role": "user", "content": user_text})
- 
+
     st.markdown(
         f"""
         <div style='display: flex; justify-content: flex-end; align-items: flex-end; margin-bottom: 10px;'>
@@ -337,10 +343,10 @@ if prompt := st.chat_input("How can I help with your studies today?"):
         """,
         unsafe_allow_html=True
     )
- 
+
     # ── Admin keyword redirect ──
     needs_admin_redirect = any(re.search(kw, user_text.lower()) for kw in ADMIN_KEYWORDS)
- 
+
     if needs_admin_redirect:
         admin_msg = (
             "It looks like you're asking about enrollment or payments! "
@@ -350,11 +356,11 @@ if prompt := st.chat_input("How can I help with your studies today?"):
         )
         st.session_state.messages.append({"role": "assistant", "content": admin_msg})
         st.rerun()
- 
+
     else:
         context_blocks = []
         status_labels = []
- 
+
         # ── STEP 1: RAG — retrieve from uploaded PDF ──
         if st.session_state.pdf_chunks and st.session_state.pdf_embeddings is not None:
             with st.status("📄 Searching your PDF...", expanded=False) as rag_status:
@@ -369,7 +375,7 @@ if prompt := st.chat_input("How can I help with your studies today?"):
                     f"[DOCUMENT CONTEXT from '{st.session_state.pdf_name}']:\n{rag_context}"
                 )
                 rag_status.update(label=f"📄 Retrieved from **{st.session_state.pdf_name}**", state="complete")
- 
+
         # ── STEP 2: Agentic — decide & run web search ──
         with st.status("🤖 Agent thinking...", expanded=False) as agent_status:
             decision = agent_decide_search(user_text)
@@ -383,12 +389,12 @@ if prompt := st.chat_input("How can I help with your studies today?"):
                 agent_status.update(label=f"🌐 Web search done: *{search_query}*", state="complete")
             else:
                 agent_status.update(label="🤖 No web search needed", state="complete")
- 
+
         # ── STEP 3: Build augmented system prompt ──
         augmented_system = SYSTEM_PROMPT
         if context_blocks:
             augmented_system += "\n\n" + "\n\n".join(context_blocks)
- 
+
         # ── STEP 4: Call LLM ──
         with st.spinner("😼 Aisa is thinking..."):
             try:
