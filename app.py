@@ -121,18 +121,19 @@ def web_search(query: str) -> str:
             return f"[Search error: {e}]"
 
 # Agent decision: should we search the web?
-AGENT_DECISION_PROMPT = """You are a strict routing agent. Decide if a web search is absolutely necessary.
+AGENT_DECISION_PROMPT = """You are a strict routing agent. Decide if a web search is needed to answer the user's message.
 Answer ONLY with valid JSON: {"needs_search": true, "search_query": "..."} or {"needs_search": false}
 
-CRITICAL RULES - Do NOT search for:
-- Greetings, conversational filler, or small talk ("hi", "hello", "how are you", "what's up", "thanks").
-- Personal questions directed at you.
-- Requests to generate quizzes, flashcards, or code from scratch.
-- Questions that the uploaded PDF can answer.
+DO NOT SEARCH IF:
+- The message is a greeting, small talk, or conversational filler (e.g., "hi", "hello", "how are you", "thanks", "ok").
+- The user is asking a personal question about you.
+- The user is explicitly asking to generate a quiz, test, or flashcards.
 
-ONLY search for:
-- General knowledge or information-related queries (e.g., "how does photosynthesis work", "history of the Roman Empire", "what is the capital of Japan").
-- Factual data or current tech events outside of standard knowledge.
+YOU MUST SEARCH IF (Return {"needs_search": true}):
+- The user asks any factual, educational, or informational question (e.g., "What is networking?", "How does an API work?", "History of the internet").
+- The user asks for an explanation of a concept, term, or process.
+- The user asks about current events, tech, or real-time data.
+- If the message is a question and is NOT small talk or a quiz request, default to searching.
 
 User message: {user_message}
 """
