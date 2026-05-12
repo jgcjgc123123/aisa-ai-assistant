@@ -299,7 +299,7 @@ st.markdown(
     """
     <div style='text-align: left; margin-bottom: 20px;'>
         <h1 style='color: #F2A900; margin-bottom: 0px;'>😼 Aisa AI</h1>
-        <p style='color: #888; font-size: 18px;'>Your Applied AI Studies Assistant &nbsp;·&nbsp;
+        <p style='color: #888; font-size: 18px;'>Your Applied AI Studies Assistant
         </p>
     </div>
     <hr>
