@@ -1,12 +1,7 @@
 streamlit
 groq
-requests
- 
-# RAG
 pdfplumber
 sentence-transformers
 scikit-learn
 numpy
-
-#Langfuse
-langfuse>=2.0.0
+requests
