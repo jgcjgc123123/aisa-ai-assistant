@@ -5,4 +5,4 @@ sentence-transformers
 scikit-learn
 numpy
 requests
-langfuse
+langfuse>=2.40.0
