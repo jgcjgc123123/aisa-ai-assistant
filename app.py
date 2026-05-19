@@ -142,9 +142,15 @@ def retrieve_context(query, top_k=3):
 @observe(as_type="generation", name="agent-routing")
 def agent_decide_search(user_message):
     prompt = f"""
-    You are a routing agent. Does this user message require searching the live internet for factual data, definitions, or current events?
+    You are an AI routing agent determining if a user's prompt requires a live web search.
+    The user has access to a dedicated static knowledge base (uploaded reference files, project structures, and study documents).
+    
+    Strict Rules:
+    1. Set "needs_search" to false if the question can be resolved via an internal project reference, project team listing, course syllabus, or static educational materials.
+    2. Set "needs_search" to true ONLY if the question explicitly demands current real-time events, live internet data, or up-to-date programming framework documentation that a reference file wouldn't contain.
+    
     Message: "{user_message}"
-    Reply strictly in JSON format: {{"needs_search": true/false, "query": "optimized search query if true"}}
+    Reply strictly in JSON format: {{"needs_search": true/false, "query": "optimized web search query if true"}}
     """
     try:
         reply = generate_llm_response([{"role": "user", "content": prompt}], json_mode=True, temperature=0.0)
