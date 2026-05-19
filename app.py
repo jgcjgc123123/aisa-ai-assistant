@@ -1,14 +1,16 @@
 import os
+import sys
+import subprocess
 import streamlit as st
 
-# 1. Langfuse Environment Configuration
-# Must be set before importing langfuse decorators
-if "LANGFUSE_PUBLIC_KEY" in st.secrets:
-    os.environ["LANGFUSE_PUBLIC_KEY"] = st.secrets["LANGFUSE_PUBLIC_KEY"]
-    os.environ["LANGFUSE_SECRET_KEY"] = st.secrets["LANGFUSE_SECRET_KEY"]
-    os.environ["LANGFUSE_HOST"] = st.secrets.get("LANGFUSE_HOST", "https://cloud.langfuse.com")
+# --- Force Upgrade Langfuse if Streamlit cache is stuck ---
+try:
+    from langfuse.decorators import observe, langfuse_context
+except ModuleNotFoundError:
+    print("Outdated Langfuse detected. Forcing upgrade...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "langfuse>=2.40.0", "--upgrade"])
+    from langfuse.decorators import observe, langfuse_context
 
-from langfuse.decorators import observe, langfuse_context
 from groq import Groq
 import re
 import io
@@ -18,7 +20,6 @@ import pdfplumber
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
-
 # 2. Page Configuration
 st.set_page_config(page_title="Aisa - AI Studies Assistant", page_icon="😼", layout="wide")
 
