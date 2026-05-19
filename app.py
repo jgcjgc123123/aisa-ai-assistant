@@ -35,7 +35,7 @@ else:
 
 TAVILY_API_KEY = st.secrets.get("TAVILY_API_KEY", "")
 
-# 3. AI Tools Configuration
+# 3. AI Tools Configuration (Cached to prevent reloading)
 @st.cache_resource(show_spinner=False)
 def load_embedder():
     return SentenceTransformer("all-MiniLM-L6-v2")
@@ -47,14 +47,19 @@ def process_pdf(uploaded_file):
     with pdfplumber.open(io.BytesIO(uploaded_file.read())) as pdf:
         for page in pdf.pages:
             extracted = page.extract_text()
-            if extracted: text += extracted + "\n"
+            if extracted: 
+                text += extracted + "\n"
     
     words = text.split()
     chunks = [" ".join(words[i:i+300]) for i in range(0, len(words), 250)]
+    if not chunks:
+        return [], []
     embeddings = embedder.encode(chunks, show_progress_bar=False)
     return chunks, embeddings
 
 def retrieve_context(query, chunks, embeddings, top_k=3):
+    if not chunks:
+        return ""
     query_vec = embedder.encode([query])
     sims = cosine_similarity(query_vec, embeddings)[0]
     top_indices = np.argsort(sims)[::-1][:top_k]
@@ -78,11 +83,13 @@ def agent_decide_search(user_message):
         return {"needs_search": False, "query": ""}
 
 def web_search(query):
-    if not TAVILY_API_KEY: return "[Search disabled: Missing Tavily API Key]"
+    if not TAVILY_API_KEY: 
+        return "[Search disabled: Missing Tavily API Key]"
     try:
         res = requests.post(
             "https://api.tavily.com/search",
-            json={"api_key": TAVILY_API_KEY, "query": query, "max_results": 3}
+            json={"api_key": TAVILY_API_KEY, "query": query, "max_results": 3},
+            timeout=10
         ).json()
         return "\n".join([f"- {r['content']}" for r in res.get("results", [])])
     except Exception as e:
@@ -216,7 +223,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# 7. Render Chat History
+# 7. Render Chat History (Handles presentation completely)
 for message in st.session_state.messages:
     if message["role"] == "user":
         st.markdown(
@@ -231,6 +238,7 @@ for message in st.session_state.messages:
             unsafe_allow_html=True
         )
     else:
+        # Check if text contains HTML flashcards to preserve structure, else use standard container
         st.markdown(
             f"""
             <div style='display: flex; justify-content: flex-start; align-items: flex-end; margin-bottom: 10px;'>
@@ -243,30 +251,19 @@ for message in st.session_state.messages:
             unsafe_allow_html=True
         )
 
-# 8. Chat Input & Main Logic
+# 8. Chat Input & Main Processing Logic
 if prompt := st.chat_input("How can I help with your studies today?"):
     
     user_text = prompt
     st.session_state.messages.append({"role": "user", "content": user_text})
     
-    st.markdown(
-        f"""
-        <div style='display: flex; justify-content: flex-end; align-items: flex-end; margin-bottom: 10px;'>
-            <div style='background-color: #0078D7; color: white; padding: 10px 15px; border-radius: 15px 15px 0px 15px; max-width: 75%;'>
-                {user_text}
-            </div>
-            <div style='font-size: 24px; margin-left: 10px;'>🧑‍💻</div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    # REMOVED: Duplicate manual st.markdown rendering container to prevent UI ghosting/duplication.
     
     needs_admin_redirect = False
-    if user_text:
-        for keyword in ADMIN_KEYWORDS:
-            if re.search(keyword, user_text.lower()):
-                needs_admin_redirect = True
-                break
+    for keyword in ADMIN_KEYWORDS:
+        if re.search(keyword, user_text.lower()):
+            needs_admin_redirect = True
+            break
     
     if needs_admin_redirect:
         admin_msg = "It looks like you're asking about enrollment or payments! For the most accurate information, please visit the official CIT-U pages:\n\n* [Enrollment Guide](https://cit.edu/enrollment/)\n* [Payment Options](https://cit.edu/payment-options/)"
@@ -277,19 +274,23 @@ if prompt := st.chat_input("How can I help with your studies today?"):
             try:
                 context_blocks = []
                 
-                if "pdf_chunks" in st.session_state:
+                # Document Retrieval
+                if "pdf_chunks" in st.session_state and len(st.session_state.pdf_chunks) > 0:
                     rag_text = retrieve_context(user_text, st.session_state.pdf_chunks, st.session_state.pdf_embeddings)
                     context_blocks.append(f"[DOCUMENT CONTEXT]:\n{rag_text}")
                 
+                # Web Search Agent Routing
                 decision = agent_decide_search(user_text)
                 if decision.get("needs_search"):
                     search_data = web_search(decision.get("query"))
                     context_blocks.append(f"[WEB SEARCH CONTEXT]:\n{search_data}")
                 
+                # Compile Augmented Context
                 augmented_system = SYSTEM_PROMPT
                 if context_blocks:
                     augmented_system += "\n\nUse the following context to answer the user:\n" + "\n\n".join(context_blocks)
                 
+                # Assemble Payload excluding system instruction from middle arrays
                 messages = [{"role": "system", "content": augmented_system}] + st.session_state.messages
                 
                 response = client.chat.completions.create(
@@ -301,5 +302,7 @@ if prompt := st.chat_input("How can I help with your studies today?"):
                 st.session_state.messages.append({"role": "assistant", "content": reply})
                 st.rerun()
             except Exception as e:
-                st.session_state.messages.pop()
+                # Safe pop if token execution failed
+                if st.session_state.messages[-1]["role"] == "user":
+                    st.session_state.messages.pop()
                 st.error(f"System Error: {e}")
