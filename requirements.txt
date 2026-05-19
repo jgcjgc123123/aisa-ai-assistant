@@ -6,3 +6,4 @@ scikit-learn
 numpy
 requests
 langfuse>=2.40.0
+requests-toolbelt
