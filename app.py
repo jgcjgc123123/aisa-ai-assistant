@@ -2,7 +2,7 @@ import os
 import streamlit as st
 
 # 1. Langfuse Environment Configuration
-# Must be set before importing langfuse decorators
+# Must be set BEFORE importing langfuse decorators
 if "LANGFUSE_PUBLIC_KEY" in st.secrets:
     os.environ["LANGFUSE_PUBLIC_KEY"] = st.secrets["LANGFUSE_PUBLIC_KEY"]
     os.environ["LANGFUSE_SECRET_KEY"] = st.secrets["LANGFUSE_SECRET_KEY"]
@@ -10,14 +10,13 @@ if "LANGFUSE_PUBLIC_KEY" in st.secrets:
 
 from langfuse.decorators import observe, langfuse_context
 from groq import Groq
+from supabase import create_client, Client
+from sentence_transformers import SentenceTransformer
 import re
 import io
 import requests
 import json
 import pdfplumber
-import numpy as np
-from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
 
 # 2. Page Configuration
 st.set_page_config(page_title="Aisa - AI Studies Assistant", page_icon="😼", layout="wide")
@@ -36,11 +35,19 @@ Key guidelines:
 
 ADMIN_KEYWORDS = [r"\benroll", r"\benrollment", r"\btuition", r"\bpay", r"\bpayment", r"\bfee", r"\bfees", r"\bcost"]
 
-# 3. API Configuration
+# 3. API & Database Configuration
 if "GROQ_API_KEY" in st.secrets:
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 else:
-    st.error("Aisa is offline 😴")
+    st.error("Aisa is offline (Groq API Key missing) 😴")
+    st.stop()
+
+if "SUPABASE_URL" in st.secrets and "SUPABASE_KEY" in st.secrets:
+    SUPABASE_URL = st.secrets["SUPABASE_URL"]
+    SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+else:
+    st.error("Aisa is offline (Supabase credentials missing) 😴")
     st.stop()
 
 TAVILY_API_KEY = st.secrets.get("TAVILY_API_KEY", "")
@@ -76,13 +83,14 @@ def generate_llm_response(messages, json_mode=False, temperature=0.5):
     langfuse_context.update_current_observation(output=reply_text)
     return reply_text
 
-# 5. AI Tools Configuration
+# 5. AI Tools Configuration (Embeddings & Database Logic)
 @st.cache_resource(show_spinner=False)
 def load_embedder():
     return SentenceTransformer("all-MiniLM-L6-v2")
 
 embedder = load_embedder()
 
+@observe(as_type="generation", name="process-pdf-supabase")
 def process_pdf(uploaded_file):
     text = ""
     with pdfplumber.open(io.BytesIO(uploaded_file.read())) as pdf:
@@ -93,18 +101,43 @@ def process_pdf(uploaded_file):
     
     words = text.split()
     chunks = [" ".join(words[i:i+300]) for i in range(0, len(words), 250)]
+    
     if not chunks:
-        return [], []
+        return False
+        
     embeddings = embedder.encode(chunks, show_progress_bar=False)
-    return chunks, embeddings
+    
+    # Package the data for Supabase insertion
+    data_to_insert = []
+    for i, chunk in enumerate(chunks):
+        data_to_insert.append({
+            "document_name": uploaded_file.name,
+            "chunk_content": chunk,
+            "embedding": embeddings[i].tolist() # Supabase requires standard python lists
+        })
+        
+    # Push to cloud database
+    supabase.table("document_chunks").insert(data_to_insert).execute()
+    return True
 
-def retrieve_context(query, chunks, embeddings, top_k=3):
-    if not chunks:
-        return ""
-    query_vec = embedder.encode([query])
-    sims = cosine_similarity(query_vec, embeddings)[0]
-    top_indices = np.argsort(sims)[::-1][:top_k]
-    return "\n...\n".join([chunks[i] for i in top_indices])
+@observe(as_type="generation", name="retrieve-supabase-context")
+def retrieve_context(query, top_k=3):
+    query_vec = embedder.encode([query])[0].tolist()
+    
+    # Call the SQL function in Supabase
+    response = supabase.rpc(
+        "match_chunks", 
+        {
+            "query_embedding": query_vec,
+            "match_threshold": 0.4, # 40% similarity minimum threshold
+            "match_count": top_k
+        }
+    ).execute()
+    
+    if response.data:
+        return "\n...\n".join([doc["chunk_content"] for doc in response.data])
+    
+    return ""
 
 @observe(as_type="generation", name="agent-routing")
 def agent_decide_search(user_message):
@@ -119,6 +152,7 @@ def agent_decide_search(user_message):
     except:
         return {"needs_search": False, "query": ""}
 
+@observe(name="tavily-web-search")
 def web_search(query):
     if not TAVILY_API_KEY: 
         return "[Search disabled: Missing Tavily API Key]"
@@ -148,12 +182,13 @@ with st.sidebar:
     
     if uploaded_pdf:
         if "pdf_name" not in st.session_state or st.session_state.pdf_name != uploaded_pdf.name:
-            with st.spinner("Indexing PDF..."):
-                chunks, embeddings = process_pdf(uploaded_pdf)
-                st.session_state.pdf_chunks = chunks
-                st.session_state.pdf_embeddings = embeddings
-                st.session_state.pdf_name = uploaded_pdf.name
-            st.success("PDF indexed and ready!")
+            with st.spinner("Syncing PDF to cloud database..."):
+                success = process_pdf(uploaded_pdf)
+                if success:
+                    st.session_state.pdf_name = uploaded_pdf.name
+                    st.success("PDF indexed to cloud and ready!")
+                else:
+                    st.error("Failed to read PDF.")
 
     st.markdown("---")
     st.subheader("🎯 Study Modes")
@@ -231,9 +266,7 @@ with st.sidebar:
         st.session_state.messages = [
             {"role": "assistant", "content": "👋 Hello! I am Aisa. Send a message, upload a PDF, or generate a quiz to begin studying."}
         ]
-        if "pdf_chunks" in st.session_state:
-            del st.session_state.pdf_chunks
-            del st.session_state.pdf_embeddings
+        if "pdf_name" in st.session_state:
             del st.session_state.pdf_name
         st.rerun()
         
@@ -300,10 +333,10 @@ if prompt := st.chat_input("How can I help with your studies today?"):
             try:
                 context_blocks = []
                 
-                # Document Retrieval
-                if "pdf_chunks" in st.session_state and len(st.session_state.pdf_chunks) > 0:
-                    rag_text = retrieve_context(user_text, st.session_state.pdf_chunks, st.session_state.pdf_embeddings)
-                    context_blocks.append(f"[DOCUMENT CONTEXT]:\n{rag_text}")
+                # Document Retrieval from Supabase
+                rag_text = retrieve_context(user_text)
+                if rag_text:
+                    context_blocks.append(f"[KNOWLEDGE BASE CONTEXT]:\n{rag_text}")
                 
                 # Web Search Agent Routing
                 decision = agent_decide_search(user_text)
