@@ -2,11 +2,12 @@ import os
 import streamlit as st
 
 # 1. Langfuse Environment Configuration
-# Must be set BEFORE importing langfuse decorators
 if "LANGFUSE_PUBLIC_KEY" in st.secrets:
     os.environ["LANGFUSE_PUBLIC_KEY"] = st.secrets["LANGFUSE_PUBLIC_KEY"]
     os.environ["LANGFUSE_SECRET_KEY"] = st.secrets["LANGFUSE_SECRET_KEY"]
     os.environ["LANGFUSE_HOST"] = st.secrets.get("LANGFUSE_HOST", "https://cloud.langfuse.com")
+    os.environ["LANGFUSE_MAX_BATCH_SIZE"] = "1"
+    os.environ["LANGFUSE_FLUSH_INTERVAL_MS"] = "100"
 
 from langfuse.decorators import observe, langfuse_context
 from groq import Groq
