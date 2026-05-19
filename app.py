@@ -1,4 +1,14 @@
+import os
 import streamlit as st
+
+# 1. Langfuse Environment Configuration
+# Must be set before importing langfuse decorators
+if "LANGFUSE_PUBLIC_KEY" in st.secrets:
+    os.environ["LANGFUSE_PUBLIC_KEY"] = st.secrets["LANGFUSE_PUBLIC_KEY"]
+    os.environ["LANGFUSE_SECRET_KEY"] = st.secrets["LANGFUSE_SECRET_KEY"]
+    os.environ["LANGFUSE_HOST"] = st.secrets.get("LANGFUSE_HOST", "https://cloud.langfuse.com")
+
+from langfuse.decorators import observe, langfuse_context
 from groq import Groq
 import re
 import io
@@ -9,7 +19,7 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# 1. Page Configuration
+# 2. Page Configuration
 st.set_page_config(page_title="Aisa - AI Studies Assistant", page_icon="😼", layout="wide")
 
 SYSTEM_PROMPT = """
@@ -26,7 +36,7 @@ Key guidelines:
 
 ADMIN_KEYWORDS = [r"\benroll", r"\benrollment", r"\btuition", r"\bpay", r"\bpayment", r"\bfee", r"\bfees", r"\bcost"]
 
-# 2. API Configuration
+# 3. API Configuration
 if "GROQ_API_KEY" in st.secrets:
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 else:
@@ -35,7 +45,38 @@ else:
 
 TAVILY_API_KEY = st.secrets.get("TAVILY_API_KEY", "")
 
-# 3. AI Tools Configuration (Cached to prevent reloading)
+# 4. Centralized LLM Generation & Tracing
+@observe(as_type="generation", name="aisa-groq-call")
+def generate_llm_response(messages, json_mode=False, temperature=0.5):
+    langfuse_context.update_current_observation(
+        input=messages,
+        model="llama-3.3-70b-versatile"
+    )
+    
+    kwargs = {
+        "model": "llama-3.3-70b-versatile",
+        "messages": messages,
+        "temperature": temperature
+    }
+    
+    if json_mode:
+        kwargs["response_format"] = {"type": "json_object"}
+        
+    response = client.chat.completions.create(**kwargs)
+    reply_text = response.choices[0].message.content
+    
+    if response.usage:
+        langfuse_context.update_current_observation(
+            usage={
+                "input": response.usage.prompt_tokens,
+                "output": response.usage.completion_tokens
+            }
+        )
+        
+    langfuse_context.update_current_observation(output=reply_text)
+    return reply_text
+
+# 5. AI Tools Configuration
 @st.cache_resource(show_spinner=False)
 def load_embedder():
     return SentenceTransformer("all-MiniLM-L6-v2")
@@ -65,6 +106,7 @@ def retrieve_context(query, chunks, embeddings, top_k=3):
     top_indices = np.argsort(sims)[::-1][:top_k]
     return "\n...\n".join([chunks[i] for i in top_indices])
 
+@observe(as_type="generation", name="agent-routing")
 def agent_decide_search(user_message):
     prompt = f"""
     You are a routing agent. Does this user message require searching the live internet for factual data, definitions, or current events?
@@ -72,13 +114,8 @@ def agent_decide_search(user_message):
     Reply strictly in JSON format: {{"needs_search": true/false, "query": "optimized search query if true"}}
     """
     try:
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            temperature=0
-        )
-        return json.loads(response.choices[0].message.content)
+        reply = generate_llm_response([{"role": "user", "content": prompt}], json_mode=True, temperature=0.0)
+        return json.loads(reply)
     except:
         return {"needs_search": False, "query": ""}
 
@@ -95,13 +132,13 @@ def web_search(query):
     except Exception as e:
         return f"[Search failed: {e}]"
 
-# 4. Session State Init
+# 6. Session State Init
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {"role": "assistant", "content": "👋 Hello! I am Aisa. Send a message, upload a PDF, or generate a quiz to begin studying."}
     ]
 
-# 5. Sidebar Layout
+# 7. Sidebar Layout
 with st.sidebar:
     st.subheader("😼 Aisa does not handle [enrollment](https://cit.edu/enrollment/) or [payments](https://cit.edu/payment-options/)!")
     st.markdown("---")
@@ -133,11 +170,7 @@ with st.sidebar:
             with st.spinner("Starting quiz..."):
                 try:
                     messages = [{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages
-                    response = client.chat.completions.create(
-                        model="llama-3.3-70b-versatile",
-                        messages=messages
-                    )
-                    reply = response.choices[0].message.content
+                    reply = generate_llm_response(messages)
                     st.session_state.messages.append({"role": "assistant", "content": reply})
                     st.rerun()
                 except Exception as e:
@@ -164,11 +197,7 @@ with st.sidebar:
                     """
                     
                     messages = [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": flashcard_prompt}]
-                    response = client.chat.completions.create(
-                        model="llama-3.3-70b-versatile",
-                        messages=messages
-                    )
-                    reply = response.choices[0].message.content
+                    reply = generate_llm_response(messages)
                     st.session_state.messages.append({"role": "assistant", "content": reply})
                     st.rerun()
                 except Exception as e:
@@ -211,7 +240,7 @@ with st.sidebar:
     st.markdown("---")
     st.caption("May 2026 ©")
 
-# 6. Top Header Layout
+# 8. Top Header Layout
 st.markdown(
     """
     <div style='text-align: left; margin-bottom: 20px;'>
@@ -223,7 +252,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# 7. Render Chat History (Handles presentation completely)
+# 9. Render Chat History
 for message in st.session_state.messages:
     if message["role"] == "user":
         st.markdown(
@@ -238,7 +267,6 @@ for message in st.session_state.messages:
             unsafe_allow_html=True
         )
     else:
-        # Check if text contains HTML flashcards to preserve structure, else use standard container
         st.markdown(
             f"""
             <div style='display: flex; justify-content: flex-start; align-items: flex-end; margin-bottom: 10px;'>
@@ -251,13 +279,11 @@ for message in st.session_state.messages:
             unsafe_allow_html=True
         )
 
-# 8. Chat Input & Main Processing Logic
+# 10. Chat Input & Main Processing Logic
 if prompt := st.chat_input("How can I help with your studies today?"):
     
     user_text = prompt
     st.session_state.messages.append({"role": "user", "content": user_text})
-    
-    # REMOVED: Duplicate manual st.markdown rendering container to prevent UI ghosting/duplication.
     
     needs_admin_redirect = False
     for keyword in ADMIN_KEYWORDS:
@@ -290,19 +316,18 @@ if prompt := st.chat_input("How can I help with your studies today?"):
                 if context_blocks:
                     augmented_system += "\n\nUse the following context to answer the user:\n" + "\n\n".join(context_blocks)
                 
-                # Assemble Payload excluding system instruction from middle arrays
+                # Assemble Payload
                 messages = [{"role": "system", "content": augmented_system}] + st.session_state.messages
                 
-                response = client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=messages
-                )
+                # Single abstracted call for tracing
+                reply = generate_llm_response(messages)
                 
-                reply = response.choices[0].message.content
                 st.session_state.messages.append({"role": "assistant", "content": reply})
                 st.rerun()
             except Exception as e:
-                # Safe pop if token execution failed
                 if st.session_state.messages[-1]["role"] == "user":
                     st.session_state.messages.pop()
                 st.error(f"System Error: {e}")
+
+# 11. CRITICAL: Force Langfuse to flush before Streamlit kills the script thread
+langfuse_context.flush()
