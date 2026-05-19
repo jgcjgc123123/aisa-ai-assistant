@@ -2,8 +2,6 @@ streamlit
 groq
 pdfplumber
 sentence-transformers
-scikit-learn
-numpy
 requests
-langfuse<3.0.0
 supabase
+langfuse<3.0.0
